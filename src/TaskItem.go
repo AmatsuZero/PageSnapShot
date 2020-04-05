@@ -10,10 +10,9 @@ import (
 )
 
 type TaskItem struct {
-	EntryURL     *url.URL
-	Client       *http.Client
-	OutputDir    string
-	documentItem rxgo.Observable
+	EntryURL  *url.URL
+	Client    *http.Client
+	OutputDir string
 }
 
 func NewPageTaskItem(src string, outputDir string, client *http.Client) (*TaskItem, error) {
@@ -26,12 +25,11 @@ func NewPageTaskItem(src string, outputDir string, client *http.Client) (*TaskIt
 		Client:    client,
 		OutputDir: outputDir,
 	}
-	item.prepareDocument()
 	return item, nil
 }
 
-func (item *TaskItem) prepareDocument() {
-	item.documentItem = rxgo.Defer([]rxgo.Producer{func(_ context.Context, ch chan<- rxgo.Item) {
+func (item *TaskItem) prepareDocument() rxgo.Observable {
+	return rxgo.Defer([]rxgo.Producer{func(_ context.Context, ch chan<- rxgo.Item) {
 		resp, err := item.Client.Get(item.EntryURL.String())
 		if err != nil {
 			ch <- rxgo.Item{
@@ -57,7 +55,7 @@ func (item *TaskItem) prepareDocument() {
 
 func (item *TaskItem) analyze() (rxgo.Observable, error) {
 	var document *goquery.Document
-	for item := range item.documentItem.Observe() {
+	for item := range item.prepareDocument().Observe() {
 		if item.E != nil {
 			return nil, item.E
 		} else {
