@@ -2,12 +2,19 @@ package tests
 
 import (
 	"PageSnapShot"
+	"os/user"
+	"path"
 	"testing"
 )
 
 func TestTaskItem(t *testing.T) {
 	snapshot := PageSnapShot.PageSnapShot{}
-	item, err := snapshot.NewTaskItem("https://www.gcores.com", "C:\\Users\\jzh16\\Desktop\\output")
+	myself, err := user.Current()
+	if err != nil {
+		t.Fail()
+	}
+	homedir := myself.HomeDir
+	item, err := snapshot.NewTaskItem("https://www.gcores.com", path.Join(homedir, "Desktop", "output"))
 	if err != nil {
 		t.Fail()
 	}

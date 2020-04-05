@@ -96,7 +96,7 @@ func (item *TaskItem) walker(index int, node *goquery.Selection, name string) (*
 	if !isExist {
 		return nil, fmt.Errorf("%v: %v 标签不存在", index, name)
 	}
-	ret, err := NewPageElementItem(link, item.EntryURL, item.OutputDir)
+	ret, err := NewPageElementItem(link, item.EntryURL, item.OutputDir, item.Client)
 	if ret != nil {
 		ret.rewrite(node)
 	}
