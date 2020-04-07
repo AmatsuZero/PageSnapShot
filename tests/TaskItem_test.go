@@ -3,7 +3,7 @@ package tests
 import (
 	"PageSnapShot"
 	"os/user"
-	"path"
+	"path/filepath"
 	"testing"
 )
 
@@ -14,7 +14,8 @@ func TestTaskItem(t *testing.T) {
 		t.Fail()
 	}
 	homedir := myself.HomeDir
-	item, err := snapshot.NewTaskItem("https://www.gcores.com", path.Join(homedir, "Desktop", "output"))
+	output := filepath.FromSlash("Desktop/output")
+	item, err := snapshot.NewTaskItem("https://www.gcores.com", filepath.Join(homedir, output))
 	if err != nil {
 		t.Fail()
 	}

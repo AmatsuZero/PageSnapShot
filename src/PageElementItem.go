@@ -6,46 +6,29 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 )
 
 type PageElementItem struct {
 	Src    *url.URL
 	Output string
 	Client *http.Client
+	Node   *goquery.Selection
+	UA     string
 }
 
-func NewPageElementItem(src string, baseURL *url.URL, mainFolder string, client *http.Client) (*PageElementItem, error) {
-	addr, err := url.Parse(src)
-	if err != nil {
-		return nil, err
-	}
-	if !addr.IsAbs() { // 是否是相对路径
-		addr = baseURL.ResolveReference(addr)
-	}
-	output := addr.String()
-	return &PageElementItem{
-		Src:    addr,
-		Output: path.Join(output, mainFolder),
-		Client: client,
-	}, nil
-}
-
-func (item *PageElementItem) save(node *goquery.Selection) {
+func (item *PageElementItem) save() error {
 	err := item.createFolder()
 	if err != nil { // 创建资源目录
-		return
+		return err
 	}
-	size, err := item.download() // 下载
-	if size <= 0 || err != nil {
-		return
-	}
-	item.rewrite(node) // 替换节点里面的路径
+	_, err = item.download() // 下载
+	return err
 }
 
 /// 将资源地址换位本地路径
-func (item *PageElementItem) rewrite(node *goquery.Selection) {
-	node.SetAttr("src", item.Output)
+func (item *PageElementItem) rewrite() {
+	//node.SetAttr("src", item.Output)
 }
 
 /// 下载
@@ -69,11 +52,11 @@ func (item *PageElementItem) download() (int64, error) {
 
 /// 创建目录
 func (item *PageElementItem) createFolder() error {
-	savePath := path.Join(item.Output)
-
-	_, err := os.Stat(savePath)
+	dirPath, _ := filepath.Split(item.Output)
+	dirPath = filepath.Clean(dirPath)
+	_, err := os.Stat(dirPath)
 	if os.IsNotExist(err) {
-		err = os.MkdirAll(savePath, 0755)
+		err = os.MkdirAll(dirPath, os.ModePerm)
 	}
 	return err
 }
