@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/reactivex/rxgo/v2"
+	"golang.org/x/net/html"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 )
 
@@ -15,6 +18,7 @@ type TaskItem struct {
 	Client    *http.Client
 	OutputDir string
 	UA        string
+	document  *goquery.Document
 }
 
 func NewPageTaskItem(src string, outputDir string, client *http.Client, ua string) (*TaskItem, error) {
@@ -78,23 +82,35 @@ func (item *TaskItem) analyze() (rxgo.Observable, error) {
 	if document == nil {
 		return nil, fmt.Errorf("%v未能成功解析", item.EntryURL)
 	}
+	item.document = document
 	observable := rxgo.Defer([]rxgo.Producer{func(_ context.Context, ch chan<- rxgo.Item) {
 		document.Find("*").Each(func(i int, selection *goquery.Selection) {
-			//ch <- item.imageWalker(i, selection)
-			//ch <- item.styleWalker(i, selection)
-			ch <- item.scriptWalker(i, selection)
+			if selection.Size() == 0 {
+				return
+			}
+			for _, node := range selection.Nodes {
+				switch node.Data {
+				case "script":
+					fallthrough
+				case "img":
+					fallthrough
+				case "style":
+					ch <- item.walker(node, selection)
+					break
+				default:
+					break
+				}
+			}
 		})
 	}})
 	return observable, nil
 }
 
-func (item *TaskItem) Export() {
+func (item *TaskItem) Export() error {
 	result, err := item.analyze()
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
-
 	for value := range result.Observe() {
 		if value.E != nil || value.V == nil {
 			continue
@@ -104,17 +120,35 @@ func (item *TaskItem) Export() {
 			pageItem.rewrite()
 		}
 	}
+	return item.exportHTML()
 }
 
-func (item *TaskItem) walker(index int, node *goquery.Selection, name string) (*PageElementItem, error) {
-	linkTag := node.Find(name)
-	link, isExist := linkTag.Attr("src")
-	if !isExist {
-		return nil, fmt.Errorf("%v: %v 标签不存在", index, name)
+func (item *TaskItem) exportHTML() error {
+	htmlStr, err := item.document.Html()
+	if err != nil {
+		return err
+	}
+	_, file := filepath.Split(item.EntryURL.String())
+	ext := filepath.Ext(file)
+	if ext != "html" && ext != "htm" {
+		file = "index.html"
+	}
+	return ioutil.WriteFile(filepath.Join(item.OutputDir, file), []byte(htmlStr), os.ModePerm)
+}
+
+func (item *TaskItem) walker(node *html.Node, selection *goquery.Selection) rxgo.Item {
+	link := ""
+	for _, attr := range node.Attr {
+		if attr.Key == "src" {
+			link = attr.Val
+		}
 	}
 	addr, err := url.Parse(link)
 	if err != nil {
-		return nil, err
+		return rxgo.Item{
+			V: nil,
+			E: err,
+		}
 	}
 	output := addr.String()
 	if !addr.IsAbs() { // 是否是相对路径
@@ -128,29 +162,8 @@ func (item *TaskItem) walker(index int, node *goquery.Selection, name string) (*
 		Src:    addr,
 		Output: output,
 		Client: item.Client,
-		Node:   node,
+		Node:   selection,
 	}
-	return element, err
-}
-
-func (item *TaskItem) imageWalker(index int, node *goquery.Selection) rxgo.Item {
-	element, err := item.walker(index, node, "img")
-	return rxgo.Item{
-		V: element,
-		E: err,
-	}
-}
-
-func (item *TaskItem) styleWalker(index int, node *goquery.Selection) rxgo.Item {
-	element, err := item.walker(index, node, "style")
-	return rxgo.Item{
-		V: element,
-		E: err,
-	}
-}
-
-func (item *TaskItem) scriptWalker(index int, node *goquery.Selection) rxgo.Item {
-	element, err := item.walker(index, node, "script")
 	return rxgo.Item{
 		V: element,
 		E: err,

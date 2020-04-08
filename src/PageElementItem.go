@@ -28,7 +28,7 @@ func (item *PageElementItem) save() error {
 
 /// 将资源地址换位本地路径
 func (item *PageElementItem) rewrite() {
-	//node.SetAttr("src", item.Output)
+	item.Node.SetAttr("src", item.Output)
 }
 
 /// 下载
