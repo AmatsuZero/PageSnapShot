@@ -117,7 +117,7 @@ func (item *TaskItem) Export() error {
 		}
 		pageItem := value.V.(*PageElementItem)
 		if err := pageItem.save(); err == nil { // 下载并保存成功
-			pageItem.rewrite()
+			pageItem.rewrite(item.OutputDir)
 		}
 	}
 	return item.exportHTML()
@@ -130,6 +130,14 @@ func (item *TaskItem) exportHTML() error {
 	}
 	_, file := filepath.Split(item.EntryURL.String())
 	ext := filepath.Ext(file)
+	// 检查文件夹是否已经创建
+	_, err = os.Stat(item.OutputDir)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(item.OutputDir, os.ModePerm)
+	}
+	if err != nil {
+		return err
+	}
 	if ext != "html" && ext != "htm" {
 		file = "index.html"
 	}
@@ -144,7 +152,7 @@ func (item *TaskItem) walker(node *html.Node, selection *goquery.Selection) rxgo
 		}
 	}
 	addr, err := url.Parse(link)
-	if err != nil {
+	if err != nil || len(link) == 0 {
 		return rxgo.Item{
 			V: nil,
 			E: err,

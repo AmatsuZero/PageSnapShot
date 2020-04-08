@@ -15,11 +15,14 @@ func TestTaskItem(t *testing.T) {
 	}
 	homedir := myself.HomeDir
 	output := filepath.FromSlash("Desktop/output")
-	item, err := snapshot.NewTaskItem("https://www.gcores.com", filepath.Join(homedir, output))
+	item, err := snapshot.NewTaskItem("https://www.taobao.com", filepath.Join(homedir, output))
 	if err != nil {
 		t.Fail()
 	}
 	if item != nil {
-		item.Export()
+		err = item.Export()
+		if err != nil {
+			t.Fail()
+		}
 	}
 }

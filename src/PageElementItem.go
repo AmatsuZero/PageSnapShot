@@ -27,13 +27,22 @@ func (item *PageElementItem) save() error {
 }
 
 /// 将资源地址换位本地路径
-func (item *PageElementItem) rewrite() {
-	item.Node.SetAttr("src", item.Output)
+func (item *PageElementItem) rewrite(baseDir string) {
+	path, err := filepath.Rel(baseDir, item.Output)
+	if err != nil {
+		path = item.Output
+	}
+	item.Node.SetAttr("src", path)
 }
 
 /// 下载
 func (item *PageElementItem) download() (int64, error) {
-	resp, err := item.Client.Get(item.Src.String())
+	req, err := http.NewRequest("GET", item.Src.String(), nil)
+	if err != nil {
+		return -1, err
+	}
+	req.Header.Set("User-Agent", item.UA)
+	resp, err := item.Client.Do(req)
 	if err != nil {
 		return -1, err
 	}
