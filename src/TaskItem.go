@@ -111,6 +111,10 @@ func (item *TaskItem) Export() error {
 	if err != nil {
 		return err
 	}
+	result = result.Filter(func(i interface{}) bool {
+		element := i.(*PageElementItem)
+		return len(element.Src.String()) > 0 && element.Src.String() != item.EntryURL.String()
+	})
 	for value := range result.Observe() {
 		if value.E != nil || value.V == nil {
 			continue
@@ -152,7 +156,7 @@ func (item *TaskItem) walker(node *html.Node, selection *goquery.Selection) rxgo
 		}
 	}
 	addr, err := url.Parse(link)
-	if err != nil || len(link) == 0 {
+	if err != nil {
 		return rxgo.Item{
 			V: nil,
 			E: err,
